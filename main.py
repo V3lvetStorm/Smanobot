@@ -15,6 +15,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 IMAGEPROCESSING, SCRAPERPROCESS = range(2)
 
+### Permission management
+global whitelist
+whitelist = []
+global token
+token = "null"
+##à
+
+
 ### Array e var globali per il multithread ###
 global counter
 counter = 0
@@ -208,13 +216,19 @@ def webm_conversion_off(update, context):
     return
 
 def repost(update, context):
-
+    global channel, whitelist
+    user = update.message.from_user
     #update.user.copy_message(chat_id='-1001222460609', message_id=message)
-    channel = open("channel", "r")
-    temp = channel.read().splitlines()
-    channel_id = temp[0]
-    channel.close()
-    context.bot.copy_message(chat_id=channel_id, from_chat_id=update.message.reply_to_message.chat.id, message_id=update.message.reply_to_message.message_id)
+    #channel = open("channel", "r")
+    #temp = channel.read().splitlines()
+    #channel_id = temp[0]
+    #channel.close()
+    if user.username in whitelist:
+        context.bot.copy_message(chat_id=channel, from_chat_id=update.message.reply_to_message.chat.id, message_id=update.message.reply_to_message.message_id)
+    else:
+        update.message.reply_text(
+        'Mi dispiace bel. Temo di non poterlo fare'
+        )
 
     return ConversationHandler.END
 
@@ -227,15 +241,32 @@ def cancel(update, context):
 
     return ConversationHandler.END
 
-def loadtoken(): # To retrieve BOT token from file
+def init(): # To retrieve BOT token from file
+    logging.info("Init...")
+    global token, whitelist, channel
+    # init token
     token = open("token", "r")
     temp = token.read().splitlines()
     token = temp[0] # avoid the \n at the hand of the file reading
-    return token
+    logging.info("Token loaded: {}".format(token))
+    # init user whitelist
+    utenti = open("whitelist", "r")
+    lines = utenti.readlines()
+    for i in lines:
+        whitelist.append(i.strip())
+        logging.info("User loaded: {}".format(i.strip()))
+    # init channel
+    channel = open("channel", "r")
+    temp = channel.read().splitlines()
+    channel = temp[0]
+    logging.info("Channel id loaded: {}".format(channel))
+    return 0
 
 def main():
     #
-    updater = Updater(loadtoken()) # loads bot token in the updater
+    global token, whitelist, channel
+    init()
+    updater = Updater(token) # loads bot token in the updater
     dispatcher = updater.dispatcher # simplify the dispatcher syntax
     # Command handling section #
     conv_handler = ConversationHandler(
