@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-IMAGEPROCESSING, SCRAPERPROCESS = range(2)
+IMAGEPROCESSING, SCRAPERPROCESS, ENHANCE = range(3)
 
 ### Permission management
 global whitelist
@@ -231,6 +231,36 @@ def repost(update, context):
         )
 
     return ConversationHandler.END
+def enhance_query(update, context):
+    update.message.reply_text(
+        'Inserisci immagine da smarmellare'
+    )
+
+    return ENHANCE
+
+def enhance(update, context):
+    user = update.message.from_user
+    if hasattr(update.message, 'photo'):
+        immagine = update.message.photo[-1].file_id
+        photo_file = context.bot.get_file(immagine)
+        photo_file.download(immagine + ".jpg")
+        logging.info("Photo of %s: %s", user.first_name, immagine + '.jpg')
+        immagine = immagine + ".jpg"
+    else:
+        immagine = update.message.document.file_id
+        photo_file = context.bot.get_file(immagine)
+        photo_file.download(update.message.document.file_name)
+        logging.info("File: %s", update.message.document.file_name)
+        immagine = update.message.document.file_name
+
+    enhancing = subprocess.run("liquid-rescale "+immagine+" "+immagine+".gif", shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    output = enhancing.stdout
+
+    context.bot.send_document(chat_id=update.message.chat_id, document=open(immagine+".gif", 'rb'))
+    os.remove(immagine)
+    os.remove(immagine+".gif")
+
+    return ConversationHandler.END
 
 
 def cancel(update, context):
@@ -276,12 +306,14 @@ def main():
             CommandHandler('scraper', urlselect),
             CommandHandler('webm_conversion_on', webm_conversion_on),
             CommandHandler('webm_conversion_off', webm_conversion_off),
-            CommandHandler('repost', repost)
+            CommandHandler('repost', repost),
+            CommandHandler('enhance', enhance_query)
         ],
 
         states={
             IMAGEPROCESSING: [MessageHandler(Filters.document.category("image") | Filters.photo, imageprocessing)],
-            SCRAPERPROCESS: [MessageHandler(Filters.text, scraperprocess, run_async=True)]
+            SCRAPERPROCESS: [MessageHandler(Filters.text, scraperprocess, run_async=True)],
+            ENHANCE: [MessageHandler(Filters.document.category("image") | Filters.photo, enhance, run_async=True)]
         },
 
         fallbacks=[CommandHandler('cancel', cancel), MessageHandler(Filters.text('Annulla'), cancel)]
