@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 
-from imageresizer import imageresize
+from imageresizer import botimageresize
 import telegram
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
@@ -20,8 +20,7 @@ global whitelist
 whitelist = []
 global token
 token = "null"
-##à
-
+###
 
 ### Array e var globali per il multithread ###
 global counter
@@ -39,6 +38,7 @@ def start(update, context):
     'Elenco comandi: \n/start - Avvia il bot\n'
     '/imageprocessing - Modalità creazione stickers\n'
     '/scraper - Scraping threads 4Chan\n'
+    '/enhance - Imbigghera immagine\n'
     '/webm_conversion_on - Abilita webm to mp4\n'
     '/webm_conversion_off - Disabilita webm to mp4\n')
 
@@ -53,24 +53,11 @@ def imageselect(update, context):
     return IMAGEPROCESSING
 
 def imageprocessing(update, context):
-    user = update.message.from_user
-    if hasattr(update.message, 'photo'):
-        immagine = update.message.photo[-1].file_id
-        photo_file = context.bot.get_file(immagine)
-        photo_file.download(immagine + ".jpg")
-        logging.info("Photo of %s: %s", user.first_name, immagine + '.jpg')
-        immagine = immagine + ".jpg"
-    else:
-        immagine = update.message.document.file_id
-        photo_file = context.bot.get_file(immagine)
-        photo_file.download(update.message.document.file_name)
-        logging.info("File: %s", update.message.document.file_name)
-        immagine = update.message.document.file_name
+    imageresized = botimageresize(update, context)
 
-    imageresized = imageresize(immagine)
-    context.bot.send_document(chat_id=update.message.chat_id, document=open(imageresized, 'rb'))
-    os.remove(imageresized)
-    os.remove(immagine)
+    context.bot.send_document(chat_id=update.message.chat_id, document=open(imageresized[0], 'rb'))
+    os.remove(imageresized[0])
+    os.remove(imageresized[1])
 
     cancel_keyboard = [['Annulla']]
     update.message.reply_text(
